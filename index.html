@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Langues">
+<meta name="theme-color" content="#14213d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Langues</title>
+<style>
+:root{--bg:#f6f7fb;--fg:#14213d;--card:#fff;--mut:#6b7280;--ok:#1b8a5a;--ko:#c0392b;--wait:#b7791f}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1321;--fg:#eef1f8;--card:#18213a;--mut:#9aa5bd;--ok:#4cc38a;--ko:#ff7a6b;--wait:#f0b44c}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.45 -apple-system,system-ui,sans-serif}
+main{padding:calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 28px);max-width:520px;margin:0 auto}
+h1{font-size:28px;margin:0 0 4px}
+p.sub{color:var(--mut);margin:0 0 24px}
+.row{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.row small{display:block;color:var(--mut);font-size:14px}
+.st{font-weight:600;white-space:nowrap}
+.ok{color:var(--ok)}.ko{color:var(--ko)}.wait{color:var(--wait)}
+p.note{color:var(--mut);font-size:14px;margin-top:20px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Langues</h1>
+  <p class="sub">Étape 1 : vérification des fondations</p>
+  <div class="row"><div>Stockage local<small id="d-db">Test en cours…</small></div><span class="st wait" id="s-db">…</span></div>
+  <div class="row"><div>Mode hors-ligne<small id="d-sw">Test en cours…</small></div><span class="st wait" id="s-sw">…</span></div>
+  <div class="row"><div>Installée sur l'écran d'accueil<small id="d-app">Test en cours…</small></div><span class="st wait" id="s-app">…</span></div>
+  <div class="row"><div>Protection des données<small id="d-per">Test en cours…</small></div><span class="st wait" id="s-per">…</span></div>
+  <p class="note">Cette page de test disparaîtra dès l'étape 3. Rien ne quitte ton téléphone.</p>
+</main>
+<script>
+function set(id,ok,txt,detail){
+  var s=document.getElementById('s-'+id);s.textContent=txt;s.className='st '+(ok===null?'wait':ok?'ok':'ko');
+  document.getElementById('d-'+id).textContent=detail;
+}
+// 1. IndexedDB : compte les ouvertures
+(function(){
+  try{
+    var r=indexedDB.open('langues-test',1);
+    r.onupgradeneeded=function(){r.result.createObjectStore('kv')};
+    r.onerror=function(){set('db',false,'Erreur','IndexedDB indisponible')};
+    r.onsuccess=function(){
+      var db=r.result,tx=db.transaction('kv','readwrite'),st=tx.objectStore('kv'),g=st.get('opens');
+      g.onsuccess=function(){var n=(g.result||0)+1;st.put(n,'opens');
+        tx.oncomplete=function(){set('db',true,'OK','Ouverture n° '+n+' enregistrée sur cet appareil')}};
+      tx.onerror=function(){set('db',false,'Erreur','Écriture impossible')};
+    };
+  }catch(e){set('db',false,'Erreur','IndexedDB indisponible')}
+})();
+// 2. Service worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(function(){return navigator.serviceWorker.ready})
+  .then(function(){set('sw',true,'Prêt','L\'app est mise en cache et s\'ouvrira sans connexion')})
+  .catch(function(){set('sw',false,'Erreur','Impossible d\'activer le hors-ligne (adresse https requise)')});
+}else set('sw',false,'Erreur','Non pris en charge');
+// 3. Installée ?
+var standalone=window.navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+set('app',standalone?true:null,standalone?'Oui':'Pas encore',standalone?'Lancée en plein écran':'Safari > Partager > Sur l\'écran d\'accueil');
+// 4. Stockage persistant
+if(navigator.storage&&navigator.storage.persist){
+  navigator.storage.persist().then(function(p){set('per',p?true:null,p?'Protégé':'Standard',p?'Safari ne supprimera pas tes données':'Installe l\'app sur l\'écran d\'accueil pour une meilleure protection')});
+}else set('per',null,'Standard','Non disponible');
+</script>
+</body>
+</html>
