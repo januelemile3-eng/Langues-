@@ -1,8 +1,9 @@
 // Service worker : met l'app en cache pour un fonctionnement 100 % hors-ligne.
+// En ligne, il récupère toujours la version la plus récente. Hors-ligne, il utilise la copie du téléphone.
 // Pour publier une mise à jour, change simplement le numéro de VERSION.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = 'langues-' + VERSION;
-const FICHIERS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const FICHIERS = ['./', './index.html', './db.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FICHIERS)).then(() => self.skipWaiting()));
@@ -16,10 +17,12 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).then(r => {
-      const copie = r.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copie));
+    fetch(e.request, { cache: 'no-cache' }).then(r => {
+      if (r && r.ok && new URL(e.request.url).origin === location.origin) {
+        const copie = r.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copie));
+      }
       return r;
-    }).catch(() => caches.match('./index.html')))
+    }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(hit => hit || caches.match('./index.html')))
   );
 });
