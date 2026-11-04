@@ -27,13 +27,23 @@ function react(mood) {
 
 // ---------- Sons (synthétisés, aucun fichier) ----------
 let ac;
+// iPhone : le son d'une page web est coupé par l'interrupteur silencieux, sauf si on déclare "playback".
+function getAC() {
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state !== 'running') ac.resume();
+  return ac;
+}
+// Safari exige un premier toucher pour "réveiller" le son : on le fait au tout premier contact.
+['pointerdown', 'touchend', 'click'].forEach(ev => document.addEventListener(ev, () => {
+  try { const a = getAC(), s = a.createBufferSource(); s.buffer = a.createBuffer(1, 1, 22050); s.connect(a.destination); s.start(0); } catch (e) {}
+}, { once: true, capture: true }));
 function tone(freqs, dur, type, gap, vol) {
   if (!S.sound) return;
   try {
-    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
-    if (ac.state === 'suspended') ac.resume();
+    getAC(); vol = Math.min(vol * 2.2, .5);
     freqs.forEach((f, i) => {
-      const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * gap;
+      const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + .05 + i * gap;
       o.type = type; o.frequency.value = f;
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + dur);
       o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + .05);
