@@ -2,7 +2,7 @@
 const LANGS = [{ code: 'en', name: 'Anglais', flag: '🇬🇧', hi: 'Hello!', go: "l'anglais" },
                { code: 'es', name: 'Espagnol', flag: '🇪🇸', hi: '¡Hola!', go: "l'espagnol" }];
 const TABS = [['home', '🏠', 'Accueil'], ['lessons', '📚', 'Leçons'], ['progress', '🏆', 'Progrès'], ['settings', '⚙️', 'Réglages']];
-const S = { lang: 'en', tab: 'home', sound: true, haptics: true, theme: 'light', profile: null };
+const S = { lang: 'en', tab: 'home', sound: true, haptics: true, hLevel: 1, theme: 'light', profile: null };
 const $ = s => document.querySelector(s), L = () => LANGS.find(l => l.code === S.lang);
 
 // ---------- Mascotte "Lingo" ----------
@@ -75,18 +75,19 @@ function toast(msg) {
 // ---------- Vibrations ----------
 // Safari iPhone n'a pas d'API de vibration : on déclenche le petit "tic" d'un interrupteur invisible.
 // Plus de tics rapprochés = vibration plus forte. (Sur Android, on utilise la vibration normale.)
+// Nombre de tics selon la force choisie (légère / moyenne / forte) et écart en ms entre les tics.
+const HP = { tap: [[1, 2, 3], 40], good: [[3, 5, 8], 45], bad: [[5, 8, 12], 40], streak: [[10, 14, 20], 50] };
 const H = {
   el: null,
   init() {
     const l = document.createElement('label'), i = document.createElement('input');
-    l.setAttribute('aria-hidden', 'true'); l.style.cssText = 'position:fixed;left:-80px;top:-80px;width:40px;height:30px;opacity:0;pointer-events:none';
+    l.setAttribute('aria-hidden', 'true'); l.style.cssText = 'position:fixed;left:0;top:0;width:44px;height:28px;opacity:0;pointer-events:none';
     i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1; l.appendChild(i); document.body.appendChild(l); H.el = l;
   },
   tick() { if (!S.haptics) return; try { if (H.el) H.el.click(); if (navigator.vibrate) navigator.vibrate(15); } catch (e) {} },
-  seq(n, gap) { for (let i = 0; i < n; i++) setTimeout(H.tick, i * gap); },
-  good() { H.seq(2, 80); },      // juste : double tic
-  bad() { H.seq(3, 50); },       // faux : bourdonnement plus appuyé
-  streak() { H.seq(5, 70); }     // série : roulement de célébration
+  seq(n, gap) { for (let i = 0; i < n; i++) { if (i === 0) H.tick(); else setTimeout(H.tick, i * gap); } },
+  run(k) { H.seq(HP[k][0][S.hLevel], HP[k][1]); },
+  good() { H.run('good'); }, bad() { H.run('bad'); }, streak() { H.run('streak'); }
 };
 
 // Récompenses : utilisables par toutes les futures leçons (Fx.good(), Fx.bad(), Fx.streak()).
@@ -130,6 +131,9 @@ const VIEWS = {
   settings: () => `<div class="card">
       <div class="row"><span>Sons</span><button class="tog" role="switch" aria-label="Sons" aria-checked="${S.sound}" data-act="sound"></button></div>
       <div class="row"><span>Vibrations</span><button class="tog" role="switch" aria-label="Vibrations" aria-checked="${S.haptics}" data-act="haptics"></button></div>
+      <div class="row"><span>Force</span><div class="seg">${[[0, 'Légère'], [1, 'Moyenne'], [2, 'Forte']].map(([v, n]) =>
+        `<button data-act="hlevel" data-v="${v}" aria-pressed="${S.hLevel === v}">${n}</button>`).join('')}</div></div>
+      <div class="row"><span>Tester</span><div class="seg"><button data-act="htest" data-v="tap">Toucher</button><button data-act="htest" data-v="good">Juste</button><button data-act="htest" data-v="bad">Faux</button></div></div>
       <div class="row"><span>Thème</span><div class="seg">${[['light', 'Clair'], ['dark', 'Sombre'], ['auto', 'Auto']].map(([v, n]) =>
         `<button data-act="theme" data-v="${v}" aria-pressed="${S.theme === v}">${n}</button>`).join('')}</div></div></div>
     <div class="card"><h3>Mes données</h3><p class="mut" style="margin:0 0 10px;font-size:15px">Tout reste sur ton iPhone. Fais une sauvegarde de temps en temps.</p>
@@ -154,7 +158,7 @@ async function exportData() {
 
 document.addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (!['good', 'bad', 'streak', 'haptics'].includes(b.dataset.act)) H.tick();
+  if (!['good', 'bad', 'streak', 'haptics', 'hlevel', 'htest'].includes(b.dataset.act)) H.run('tap');
   try {
     if (b.dataset.lang && b.dataset.lang !== S.lang) {
       S.lang = b.dataset.lang; await DB.setSetting('lang', S.lang); S.profile = await DB.getProfile(S.lang); render();
@@ -165,7 +169,9 @@ document.addEventListener('click', async e => {
       case 'streak': Fx.streak(7); break;
       case 'start': react('cheer'); toast('Le diagnostic arrive bientôt ! 🚀'); break;
       case 'sound': S.sound = !S.sound; await DB.setSetting('sound', S.sound); render(); if (S.sound) Fx.good(); break;
-      case 'haptics': S.haptics = !S.haptics; await DB.setSetting('haptics', S.haptics); render(); H.good(); break;
+      case 'haptics': S.haptics = !S.haptics; if (S.haptics) H.run('good'); await DB.setSetting('haptics', S.haptics); render(); break;
+      case 'hlevel': S.hLevel = +b.dataset.v; H.run('good'); await DB.setSetting('hLevel', S.hLevel); render(); break;
+      case 'htest': H.run(b.dataset.v); break;
       case 'theme': S.theme = b.dataset.v; await DB.setSetting('theme', S.theme); applyTheme(); render(); break;
       case 'export': exportData(); break;
     }
@@ -178,7 +184,7 @@ window.addEventListener('db-error', e => toast('Erreur de stockage : ' + (e.deta
   H.init(); $('#splash .mhold').innerHTML = mascot();
   try {
     await DB.open();
-    S.lang = await DB.getSetting('lang', 'en'); S.sound = await DB.getSetting('sound', true); S.theme = await DB.getSetting('theme', 'light'); S.haptics = await DB.getSetting('haptics', true);
+    S.lang = await DB.getSetting('lang', 'en'); S.sound = await DB.getSetting('sound', true); S.theme = await DB.getSetting('theme', 'light'); S.haptics = await DB.getSetting('haptics', true); S.hLevel = await DB.getSetting('hLevel', 1);
     if (!LANGS.some(l => l.code === S.lang)) S.lang = 'en';
     S.profile = await DB.getProfile(S.lang); DB.persist();
     applyTheme(); render(); $('#app').hidden = false; $('#splash').classList.add('off');
