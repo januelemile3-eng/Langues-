@@ -1,0 +1,57 @@
+// Espagnol. Mots : [mot, français, niveau, thème] · Phrases : [niveau, espagnol, français, règle, [mots pièges]]
+registerLang({
+  code: 'es', name: 'Espagnol', nativeName: 'Español', flag: '🇪🇸', speech: 'es-ES', hi: '¡Hola!', go: "l'espagnol",
+  vocab: [
+    ['la manzana', 'pomme', 1, 'nourriture'], ['el pan', 'pain', 1, 'nourriture'], ['el agua', 'eau', 1, 'nourriture'], ['la leche', 'lait', 1, 'nourriture'],
+    ['el queso', 'fromage', 1, 'nourriture'], ['el café', 'café', 1, 'nourriture'],
+    ['la madre', 'mère', 1, 'famille'], ['el padre', 'père', 1, 'famille'], ['la hermana', 'sœur', 1, 'famille'], ['el hermano', 'frère', 1, 'famille'], ['el amigo', 'ami', 1, 'famille'],
+    ['la casa', 'maison', 1, 'quotidien'], ['el coche', 'voiture', 1, 'quotidien'], ['el libro', 'livre', 1, 'quotidien'], ['la puerta', 'porte', 1, 'quotidien'],
+    ['la escuela', 'école', 1, 'quotidien'], ['el trabajo', 'travail', 1, 'quotidien'],
+    ['grande', 'grand', 1, 'adjectifs'], ['pequeño', 'petit', 1, 'adjectifs'], ['feliz', 'heureux', 1, 'adjectifs'], ['cansado', 'fatigué', 1, 'adjectifs'],
+    ['frío', 'froid', 1, 'adjectifs'], ['caliente', 'chaud', 1, 'adjectifs'],
+    ['comer', 'manger', 1, 'verbes'], ['beber', 'boire', 1, 'verbes'], ['ir', 'aller', 1, 'verbes'], ['tener', 'avoir', 1, 'verbes'],
+    ['gustar', 'plaire', 1, 'verbes'], ['querer', 'vouloir, aimer', 1, 'verbes'], ['vivir', 'habiter, vivre', 1, 'verbes'],
+    ['el aeropuerto', 'aéroport', 2, 'voyage'], ['el billete', 'billet', 2, 'voyage'], ['viajar', 'voyager', 2, 'voyage'], ['comprar', 'acheter', 2, 'voyage'],
+    ['caro', 'cher', 2, 'adjectifs'], ['barato', 'bon marché', 2, 'adjectifs'], ['el tiempo', 'météo, temps', 2, 'quotidien'],
+    ['mañana', 'demain', 2, 'temps'], ['ayer', 'hier', 2, 'temps'], ['siempre', 'toujours', 2, 'temps'], ['nunca', 'jamais', 2, 'temps'],
+    ['entender', 'comprendre', 2, 'verbes'], ['olvidar', 'oublier', 2, 'verbes'], ['recordar', 'se souvenir', 2, 'verbes'],
+    ['mejorar', "s'améliorer", 3, 'verbes'], ['rechazar', 'refuser', 3, 'verbes'], ['sugerir', 'suggérer', 3, 'verbes'], ['permitirse', 'avoir les moyens de', 3, 'verbes'],
+    ['aunque', 'bien que', 3, 'liens'], ['el plazo', 'date limite', 3, 'travail'], ['el logro', 'réussite', 3, 'travail'],
+    ['el comportamiento', 'comportement', 3, 'quotidien'], ['disponible', 'disponible', 3, 'adjectifs']
+  ],
+  grammar: [
+    { id: 'ser', lvl: 1, title: 'Le verbe « ser »', rule: 'Identité, origine, caractéristiques : soy, eres, es, somos, sois, son.', tip: 'On dit « Soy estudiante » : pas d\'article devant une profession.' },
+    { id: 'estar', lvl: 1, title: 'Le verbe « estar »', rule: 'État, lieu, action en cours : estoy, estás, está, estamos, estáis, están.', tip: 'Lieu ou état du moment → estar. Identité ou nature → ser.' },
+    { id: 'genero', lvl: 1, title: 'Genre et accord', rule: 'Noms masculins (el libro) et féminins (la casa). L\'adjectif s\'accorde : pequeño → pequeña.', tip: 'Beaucoup de noms en -o sont masculins et en -a féminins, avec des exceptions (el día).' },
+    { id: 'presente', lvl: 1, title: 'Le présent', rule: 'Verbes en -ar, -er, -ir : on remplace la terminaison (hablo, comes, vive).', tip: 'Le pronom est facultatif : la terminaison indique déjà qui parle.' },
+    { id: 'gustar', lvl: 1, title: 'Le verbe « gustar »', rule: 'Me gusta + singulier, me gustan + pluriel. On dit ce qui plaît, pas qui aime.', tip: '« Me gusta el café » signifie littéralement « le café me plaît ».' },
+    { id: 'ir_a', lvl: 2, title: 'Le futur proche', rule: 'ir a + infinitif : voy a viajar, vas a comer.', tip: 'Il faut le « a » : « voy a viajar », pas « voy viajar ».' },
+    { id: 'indefinido', lvl: 2, title: 'Le prétérit (passé simple)', rule: 'Action terminée : compré, compraste, compró… Pour -er / -ir : comí, comiste, comió.', tip: 'Souvent utilisé avec ayer, anoche, el año pasado.' },
+    { id: 'gerundio', lvl: 2, title: 'Le gérondif', rule: 'estar + -ando / -iendo : estoy comiendo, estamos hablando.', tip: 'Il faut « estar » devant le gérondif.' },
+    { id: 'comparativo', lvl: 2, title: 'Le comparatif', rule: 'más + adjectif + que : más caro que.', tip: 'Attention à l\'accent : « más » (plus) ≠ « mas » (mais).' },
+    { id: 'perfecto', lvl: 2, title: 'Le passé composé', rule: 'haber + participe : he, has, ha, hemos, habéis, han + viajado / comido.', tip: 'Le participe après « haber » ne s\'accorde jamais.' },
+    { id: 'si1', lvl: 3, title: 'Si + présent, futur', rule: 'Si llueve, nos quedaremos : si + présent, puis futur.', tip: 'Après « si », pas de futur : « si llueve », pas « si lloverá ».' },
+    { id: 'subjuntivo', lvl: 3, title: 'Le subjonctif', rule: 'Après un souhait : quiero que + subjonctif (vengas, tengas).', tip: 'Quand le sujet change (« je veux que tu… »), on utilise le subjonctif, pas l\'infinitif.' }
+  ],
+  sentences: [
+    [1, 'Yo soy estudiante.', 'Je suis étudiant.', 'ser', ['estoy', 'es']],
+    [1, 'Ella es mi hermana.', 'Elle est ma sœur.', 'ser', ['está', 'soy']],
+    [1, 'Estamos cansados.', 'Nous sommes fatigués.', 'estar', ['somos', 'cansado']],
+    [1, 'El libro es grande.', 'Le livre est grand.', 'genero', ['la', 'grandes']],
+    [1, 'La casa es pequeña.', 'La maison est petite.', 'genero', ['pequeño', 'el']],
+    [1, 'Como pan y bebo agua.', 'Je mange du pain et je bois de l\'eau.', 'presente', ['comes', 'bebe']],
+    [1, 'Me gusta el café.', 'J\'aime le café.', 'gustar', ['gusto', 'gustan']],
+    [1, 'Tenemos un coche.', 'Nous avons une voiture.', 'presente', ['tengo', 'tiene']],
+    [1, '¿Dónde vives?', 'Où habites-tu ?', 'presente', ['vive', 'vivo']],
+    [2, 'Voy a viajar mañana.', 'Je vais voyager demain.', 'ir_a', ['viajo', 'vas']],
+    [2, 'Ayer compré un billete.', 'Hier, j\'ai acheté un billet.', 'indefinido', ['compro', 'comprar']],
+    [2, 'Siempre olvido mi libro.', 'J\'oublie toujours mon livre.', 'presente', ['olvida', 'olvidó']],
+    [2, 'Estoy comiendo en casa.', 'Je mange à la maison.', 'gerundio', ['como', 'comer']],
+    [2, 'Este coche es más caro que ese.', 'Cette voiture est plus chère que celle-là.', 'comparativo', ['mas', 'caros']],
+    [2, 'Mis amigos están en el aeropuerto.', 'Mes amis sont à l\'aéroport.', 'estar', ['son', 'está']],
+    [2, 'Hemos viajado mucho.', 'Nous avons beaucoup voyagé.', 'perfecto', ['viajamos', 'han']],
+    [3, 'Si llueve, nos quedaremos en casa.', 'S\'il pleut, nous resterons à la maison.', 'si1', ['lloverá', 'quedamos']],
+    [3, 'Quiero que vengas mañana.', 'Je veux que tu viennes demain.', 'subjuntivo', ['vienes', 'venir']],
+    [3, 'Espero que tengas un buen día.', 'J\'espère que tu passes une bonne journée.', 'subjuntivo', ['tienes', 'tener']]
+  ]
+});

@@ -1,0 +1,55 @@
+// Anglais. Mots : [mot, français, niveau, thème] · Phrases : [niveau, anglais, français, règle, [mots pièges]]
+registerLang({
+  code: 'en', name: 'Anglais', nativeName: 'English', flag: '🇬🇧', speech: 'en-GB', hi: 'Hello!', go: "l'anglais",
+  vocab: [
+    ['apple', 'pomme', 1, 'nourriture'], ['bread', 'pain', 1, 'nourriture'], ['water', 'eau', 1, 'nourriture'], ['milk', 'lait', 1, 'nourriture'],
+    ['cheese', 'fromage', 1, 'nourriture'], ['coffee', 'café', 1, 'nourriture'],
+    ['mother', 'mère', 1, 'famille'], ['father', 'père', 1, 'famille'], ['sister', 'sœur', 1, 'famille'], ['brother', 'frère', 1, 'famille'], ['friend', 'ami(e)', 1, 'famille'],
+    ['house', 'maison', 1, 'quotidien'], ['car', 'voiture', 1, 'quotidien'], ['book', 'livre', 1, 'quotidien'], ['door', 'porte', 1, 'quotidien'],
+    ['school', 'école', 1, 'quotidien'], ['work', 'travail', 1, 'quotidien'],
+    ['big', 'grand', 1, 'adjectifs'], ['small', 'petit', 1, 'adjectifs'], ['happy', 'heureux', 1, 'adjectifs'], ['tired', 'fatigué', 1, 'adjectifs'],
+    ['cold', 'froid', 1, 'adjectifs'], ['hot', 'chaud', 1, 'adjectifs'],
+    ['to eat', 'manger', 1, 'verbes'], ['to drink', 'boire', 1, 'verbes'], ['to go', 'aller', 1, 'verbes'], ['to have', 'avoir', 1, 'verbes'],
+    ['to like', 'aimer', 1, 'verbes'], ['to want', 'vouloir', 1, 'verbes'], ['to live', 'habiter', 1, 'verbes'],
+    ['airport', 'aéroport', 2, 'voyage'], ['ticket', 'billet', 2, 'voyage'], ['to travel', 'voyager', 2, 'voyage'], ['to buy', 'acheter', 2, 'voyage'],
+    ['expensive', 'cher', 2, 'adjectifs'], ['cheap', 'bon marché', 2, 'adjectifs'], ['weather', 'météo, temps', 2, 'quotidien'],
+    ['tomorrow', 'demain', 2, 'temps'], ['yesterday', 'hier', 2, 'temps'], ['always', 'toujours', 2, 'temps'], ['never', 'jamais', 2, 'temps'],
+    ['to understand', 'comprendre', 2, 'verbes'], ['to forget', 'oublier', 2, 'verbes'], ['to remember', 'se souvenir', 2, 'verbes'],
+    ['to improve', "s'améliorer", 3, 'verbes'], ['to refuse', 'refuser', 3, 'verbes'], ['to suggest', 'suggérer', 3, 'verbes'], ['to afford', 'avoir les moyens de', 3, 'verbes'],
+    ['although', 'bien que', 3, 'liens'], ['deadline', 'date limite', 3, 'travail'], ['achievement', 'réussite', 3, 'travail'],
+    ['behaviour', 'comportement', 3, 'quotidien'], ['available', 'disponible', 3, 'adjectifs']
+  ],
+  grammar: [
+    { id: 'be', lvl: 1, title: 'Le verbe « be » (être)', rule: 'I am · you are · he/she/it is · we/you/they are.', tip: 'Après he, she, it, on utilise « is » (jamais « are »).' },
+    { id: 'article', lvl: 1, title: 'Les articles a / an', rule: '« a » devant un son consonne (a book), « an » devant un son voyelle (an apple).', tip: 'Ce qui compte, c\'est le son : « an hour » (h muet), « a university » (son « you »).' },
+    { id: 'plural', lvl: 1, title: 'Le pluriel des noms', rule: 'On ajoute -s (book → books), ou -es après s, x, ch, sh (box → boxes).', tip: 'Quelques pluriels irréguliers : child → children, man → men.' },
+    { id: 'present', lvl: 1, title: 'Le présent simple', rule: 'Habitudes et vérités : I eat, she eats (-s à he/she/it). Négation : don\'t / doesn\'t + verbe de base.', tip: 'Après « doesn\'t », le verbe reste sans -s : « She doesn\'t like ».' },
+    { id: 'question', lvl: 1, title: 'Poser une question', rule: 'Do / Does + sujet + verbe de base : Do you work ? Does he work ?', tip: 'Avec « does », le verbe n\'a pas de -s : « Does he work ? »' },
+    { id: 'past', lvl: 2, title: 'Le prétérit', rule: 'Verbes réguliers : verbe + -ed (work → worked). Irréguliers à apprendre : go → went, be → was / were.', tip: 'On n\'ajoute pas -ed aux irréguliers : « went », pas « goed ».' },
+    { id: 'continuous', lvl: 2, title: 'Le présent continu', rule: 'am / is / are + verbe en -ing, pour une action en cours ou un projet proche.', tip: 'Il faut toujours am / is / are devant le verbe en -ing.' },
+    { id: 'future', lvl: 2, title: 'Le futur avec « will »', rule: 'will + verbe de base : I will buy. Pour un projet décidé : be going to + verbe.', tip: 'Après « will », le verbe ne change jamais : « she will go ».' },
+    { id: 'comparative', lvl: 2, title: 'Le comparatif', rule: 'Mot court : adjectif + -er + than (bigger than). Mot long : more + adjectif + than (more expensive than).', tip: 'On ne cumule pas : « more expensive », pas « more expensiver ».' },
+    { id: 'cond1', lvl: 3, title: 'If + présent, will', rule: 'If + présent simple, will + verbe : If it rains, we will stay home.', tip: 'Après « if », pas de « will » : « If it rains » (pas « will rain »).' },
+    { id: 'perfect', lvl: 3, title: 'Le present perfect', rule: 'have / has + participe passé : I have lived here for five years. Lien entre passé et présent.', tip: 'Avec « for », « never » ou « ever », on utilise le present perfect, pas le prétérit.' }
+  ],
+  sentences: [
+    [1, 'I am a student.', 'Je suis étudiant.', 'be', ['are', 'an']],
+    [1, 'She is my sister.', 'Elle est ma sœur.', 'be', ['are', 'am']],
+    [1, 'We are friends.', 'Nous sommes amis.', 'be', ['is', 'am']],
+    [1, 'He has an apple.', 'Il a une pomme.', 'article', ['a', 'have']],
+    [1, 'The books are big.', 'Les livres sont grands.', 'plural', ['is', 'book']],
+    [1, 'She drinks water.', 'Elle boit de l\'eau.', 'present', ['drink', 'drinking']],
+    [1, 'They do not like coffee.', 'Ils n\'aiment pas le café.', 'present', ['does', 'likes']],
+    [1, 'Does he work here?', 'Travaille-t-il ici ?', 'question', ['Do', 'works']],
+    [2, 'I went to school yesterday.', 'Je suis allé à l\'école hier.', 'past', ['go', 'goed']],
+    [2, 'She was tired.', 'Elle était fatiguée.', 'past', ['were', 'is']],
+    [2, 'We are going to the airport.', 'Nous allons à l\'aéroport.', 'continuous', ['go', 'goes']],
+    [2, 'He is eating bread.', 'Il mange du pain.', 'continuous', ['eats', 'eat']],
+    [2, 'I will buy a ticket tomorrow.', 'J\'achèterai un billet demain.', 'future', ['buying', 'bought']],
+    [2, 'This car is more expensive than that one.', 'Cette voiture est plus chère que celle-là.', 'comparative', ['expensiver', 'most']],
+    [2, 'Where do you live?', 'Où habites-tu ?', 'question', ['does', 'lives']],
+    [3, 'If it rains, we will stay home.', 'S\'il pleut, nous resterons à la maison.', 'cond1', ['would', 'rained']],
+    [3, 'I have lived here for five years.', 'J\'habite ici depuis cinq ans.', 'perfect', ['live', 'since']],
+    [3, 'I have never been to Spain.', 'Je ne suis jamais allé en Espagne.', 'perfect', ['was', 'ever']]
+  ]
+});
