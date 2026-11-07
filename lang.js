@@ -8,12 +8,15 @@
   // Appelée par chaque fichier de langue. Les lignes compactes sont transformées en objets complets.
   window.registerLang = function (d) {
     const c = d.code;
-    REG[c] = Object.assign({}, d, {
+    const add = {
       vocab: (d.vocab || []).map(([w, fr, lvl, theme]) => ({ id: c + '.v.' + slug(w), w, fr, lvl, theme })),
       grammar: (d.grammar || []).map(g => Object.assign({}, g, { id: c + '.g.' + g.id })),
       sentences: (d.sentences || []).map(([lvl, target, fr, gid, dis]) =>
         ({ id: c + '.s.' + slug(target), lvl, target, fr, grammarId: c + '.g.' + gid, words: tokens(target), distractors: dis || [] }))
-    });
+    };
+    // Plusieurs fichiers peuvent compléter la même langue (ex. lang-en.js puis lang-en-2.js) : on les fusionne.
+    if (REG[c]) Object.keys(add).forEach(k => { REG[c][k] = REG[c][k].concat(add[k]); });
+    else REG[c] = Object.assign({}, d, add);
   };
 
   const loadScript = src => new Promise((res, rej) => {
@@ -22,7 +25,7 @@
   });
   async function loadAll() {
     for (const code of (self.LANG_CODES || [])) {
-      try { await loadScript('lang-' + code + '.js'); if (!REG[code]) throw new Error(code); } catch (e) { FAILED.push(code); }
+      try { await loadScript('lang-' + code + '.js'); if (!code.includes('-') && !REG[code]) throw new Error(code); } catch (e) { FAILED.push(code); }
     }
     return Object.values(REG);
   }
