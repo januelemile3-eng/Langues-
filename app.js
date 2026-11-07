@@ -1,8 +1,7 @@
 // app.js : interface de base (étape 3). Langues, navigation, thème, mascotte, récompenses.
-const LANGS = [{ code: 'en', name: 'Anglais', flag: '🇬🇧', hi: 'Hello!', go: "l'anglais" },
-               { code: 'es', name: 'Espagnol', flag: '🇪🇸', hi: '¡Hola!', go: "l'espagnol" }];
+let LANGS = []; // rempli depuis les fichiers lang-xx.js (voir lang.js)
 const TABS = [['home', '🏠', 'Accueil'], ['lessons', '📚', 'Leçons'], ['progress', '🏆', 'Progrès'], ['settings', '⚙️', 'Réglages']];
-const S = { lang: 'en', tab: 'home', sound: true, haptics: true, hLevel: 1, theme: 'light', profile: null };
+const S = { lang: 'en', tab: 'home', sound: true, haptics: false, hLevel: 1, theme: 'light', profile: null };
 const $ = s => document.querySelector(s), L = () => LANGS.find(l => l.code === S.lang);
 
 // ---------- Mascotte "Lingo" ----------
@@ -130,15 +129,15 @@ const VIEWS = {
     <div class="card"><h3>Badges</h3><p class="mut" style="margin:0">Tes premiers badges arriveront avec tes premières leçons. 🏆</p></div>`,
   settings: () => `<div class="card">
       <div class="row"><span>Sons</span><button class="tog" role="switch" aria-label="Sons" aria-checked="${S.sound}" data-act="sound"></button></div>
-      <div class="row"><span>Vibrations</span><button class="tog" role="switch" aria-label="Vibrations" aria-checked="${S.haptics}" data-act="haptics"></button></div>
-      <div class="row"><span>Force</span><div class="seg">${[[0, 'Légère'], [1, 'Moyenne'], [2, 'Forte']].map(([v, n]) =>
-        `<button data-act="hlevel" data-v="${v}" aria-pressed="${S.hLevel === v}">${n}</button>`).join('')}</div></div>
-      <div class="row"><span>Tester</span><div class="seg"><button data-act="htest" data-v="tap">Toucher</button><button data-act="htest" data-v="good">Juste</button><button data-act="htest" data-v="bad">Faux</button></div></div>
+      <div class="row"><span>Vibrations (expérimental)</span><button class="tog" role="switch" aria-label="Vibrations" aria-checked="${S.haptics}" data-act="haptics"></button></div>
       <div class="row"><span>Thème</span><div class="seg">${[['light', 'Clair'], ['dark', 'Sombre'], ['auto', 'Auto']].map(([v, n]) =>
         `<button data-act="theme" data-v="${v}" aria-pressed="${S.theme === v}">${n}</button>`).join('')}</div></div></div>
     <div class="card"><h3>Mes données</h3><p class="mut" style="margin:0 0 10px;font-size:15px">Tout reste sur ton iPhone. Fais une sauvegarde de temps en temps.</p>
       <button class="big" style="margin:0" data-act="export">Sauvegarder mes données</button></div>
-    <p class="mut" style="text-align:center;font-size:13px">Langues · étape 3</p>`
+    <div class="card"><h3>Contenu des langues</h3>
+      ${LANGS.map(l => { const t = Lang.stats(l.code); return `<div class="row"><span>${l.flag} ${l.name}</span><small>${t.vocab} mots · ${t.grammar} règles · ${t.sentences} phrases</small></div>`; }).join('')}
+      <button class="big" style="margin:12px 0 0" data-act="check">Vérifier le contenu</button><div id="chk" class="mut" style="margin-top:10px;font-size:14px"></div></div>
+    <p class="mut" style="text-align:center;font-size:13px">Langues · étape 4</p>`
 };
 
 function render() {
@@ -169,11 +168,14 @@ document.addEventListener('click', async e => {
       case 'streak': Fx.streak(7); break;
       case 'start': react('cheer'); toast('Le diagnostic arrive bientôt ! 🚀'); break;
       case 'sound': S.sound = !S.sound; await DB.setSetting('sound', S.sound); render(); if (S.sound) Fx.good(); break;
-      case 'haptics': S.haptics = !S.haptics; if (S.haptics) H.run('good'); await DB.setSetting('haptics', S.haptics); render(); break;
+      case 'haptics': S.haptics = !S.haptics; if (S.haptics) H.run('good'); await DB.setSetting('haptics2', S.haptics); render(); break;
       case 'hlevel': S.hLevel = +b.dataset.v; H.run('good'); await DB.setSetting('hLevel', S.hLevel); render(); break;
       case 'htest': H.run(b.dataset.v); break;
       case 'theme': S.theme = b.dataset.v; await DB.setSetting('theme', S.theme); applyTheme(); render(); break;
       case 'export': exportData(); break;
+      case 'check': { const out = LANGS.flatMap(l => Lang.validate(l.code).map(e => l.code.toUpperCase() + ' : ' + e));
+        $('#chk').innerHTML = out.length ? '⚠️ ' + out.slice(0, 6).join('<br>') : '✅ Tout est cohérent : aucun doublon, aucune règle manquante.';
+        if (!out.length) Fx.good(); break; }
     }
   } catch (err) { toast('Oups, une erreur est survenue : ' + err.message); }
 });
@@ -183,13 +185,14 @@ window.addEventListener('db-error', e => toast('Erreur de stockage : ' + (e.deta
 (async function init() {
   H.init(); $('#splash .mhold').innerHTML = mascot();
   try {
+    await Lang.loadAll(); LANGS = Lang.list(); if (!LANGS.length) throw new Error('Aucune langue chargée');
     await DB.open();
-    S.lang = await DB.getSetting('lang', 'en'); S.sound = await DB.getSetting('sound', true); S.theme = await DB.getSetting('theme', 'light'); S.haptics = await DB.getSetting('haptics', true); S.hLevel = await DB.getSetting('hLevel', 1);
-    if (!LANGS.some(l => l.code === S.lang)) S.lang = 'en';
+    S.lang = await DB.getSetting('lang', 'en'); S.sound = await DB.getSetting('sound', true); S.theme = await DB.getSetting('theme', 'light'); S.haptics = await DB.getSetting('haptics2', false); S.hLevel = await DB.getSetting('hLevel', 1);
+    if (!LANGS.some(l => l.code === S.lang)) S.lang = LANGS[0].code;
     S.profile = await DB.getProfile(S.lang); DB.persist();
     applyTheme(); render(); $('#app').hidden = false; $('#splash').classList.add('off');
   } catch (e) {
-    $('#splash p').innerHTML = "Impossible d'ouvrir la mémoire de l'app.<br><small>Ferme l'app, rouvre-la, et vérifie que le stockage de Safari n'est pas plein.</small>";
+    $('#splash p').innerHTML = "Impossible de démarrer l'app.<br><small>Ferme l'app et rouvre-la. Si ça continue, le stockage de Safari est peut-être plein.</small>";
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
