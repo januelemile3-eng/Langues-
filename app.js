@@ -116,9 +116,9 @@ const VIEWS = {
       <div class="chip"><b>🎯 ${P().level || '?'}</b><span>niveau</span></div>
     </div>
     <button class="big" data-act="start">${P().diagnosticDone ? 'Continuer' : 'Commencer le diagnostic'}</button>
-    <div class="card"><h3>🎉 Essaie les récompenses</h3>
-      <div class="btns"><button data-act="good">Bonne réponse</button><button data-act="bad">Mauvaise</button><button data-act="streak">Série</button></div>
-      <p class="mut" style="margin:10px 0 0;font-size:14px">Test temporaire : sons, confettis et mascotte.</p></div>`,
+    <div class="card"><h3>🧪 Séance d'essai</h3>
+      <p class="mut" style="margin:0 0 12px;font-size:15px">10 exercices variés pour tester le moteur. Les vraies leçons arrivent à l'étape 7.</p>
+      <button class="big" style="margin:0" data-act="practice">Lancer une séance</button></div>`,
   lessons: () => `<div class="card"><h3>Ton parcours en ${L().name.toLowerCase()}</h3>
     <p class="mut" style="margin:0">Tes 5 leçons sur mesure apparaîtront ici après le diagnostic.</p>
     <div class="path">${[1, 2, 3, 4, 5].map(i => `<div class="node" aria-label="Leçon ${i} verrouillée">🔒</div>`).join('')}</div></div>`,
@@ -137,7 +137,7 @@ const VIEWS = {
     <div class="card"><h3>Contenu des langues</h3>
       ${LANGS.map(l => { const t = Lang.stats(l.code); return `<div class="row"><span>${l.flag} ${l.name}</span><small>${t.vocab} mots · ${t.grammar} règles · ${t.sentences} phrases</small></div>`; }).join('')}
       <button class="big" style="margin:12px 0 0" data-act="check">Vérifier le contenu</button><div id="chk" class="mut" style="margin-top:10px;font-size:14px"></div></div>
-    <p class="mut" style="text-align:center;font-size:13px">Langues · étape 4</p>`
+    <p class="mut" style="text-align:center;font-size:13px">Langues · étape 5</p>`
 };
 
 function render() {
@@ -172,6 +172,7 @@ document.addEventListener('click', async e => {
       case 'hlevel': S.hLevel = +b.dataset.v; H.run('good'); await DB.setSetting('hLevel', S.hLevel); render(); break;
       case 'htest': H.run(b.dataset.v); break;
       case 'theme': S.theme = b.dataset.v; await DB.setSetting('theme', S.theme); applyTheme(); render(); break;
+      case 'practice': await Exo.start({ lang: S.lang }); S.profile = await DB.getProfile(S.lang); render(); break;
       case 'export': exportData(); break;
       case 'check': { const out = LANGS.flatMap(l => Lang.validate(l.code).map(e => l.code.toUpperCase() + ' : ' + e));
         $('#chk').innerHTML = out.length ? '⚠️ ' + out.slice(0, 6).join('<br>') : '✅ Tout est cohérent : aucun doublon, aucune règle manquante.';
