@@ -2,9 +2,9 @@
 // En ligne, il récupère toujours la version la plus récente. Hors-ligne, il utilise la copie du téléphone.
 // Pour publier une mise à jour, change simplement le numéro de VERSION.
 importScripts('./lang-list.js'); // liste des langues : leurs fichiers sont mis en cache automatiquement
-const VERSION = 'v6';
+const VERSION = 'v7';
 const CACHE = 'langues-' + VERSION;
-const FICHIERS = ['./', './index.html', './db.js', './lang.js', './exo.js', './style.css', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './lang-list.js']
+const FICHIERS = ['./', './index.html', './db.js', './lang.js', './exo.js', './diag.js', './style.css', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './lang-list.js']
   .concat((self.LANG_CODES || []).map(c => './lang-' + c + '.js'));
 
 self.addEventListener('install', e => {

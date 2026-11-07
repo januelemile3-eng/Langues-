@@ -1,7 +1,7 @@
 // app.js : interface de base (étape 3). Langues, navigation, thème, mascotte, récompenses.
 let LANGS = []; // rempli depuis les fichiers lang-xx.js (voir lang.js)
 const TABS = [['home', '🏠', 'Accueil'], ['lessons', '📚', 'Leçons'], ['progress', '🏆', 'Progrès'], ['settings', '⚙️', 'Réglages']];
-const S = { lang: 'en', tab: 'home', sound: true, haptics: false, hLevel: 1, theme: 'light', profile: null };
+const S = { lang: 'en', tab: 'home', sound: true, haptics: false, hLevel: 1, theme: 'light', profile: null, diag: null, skipDiag: {} };
 const $ = s => document.querySelector(s), L = () => LANGS.find(l => l.code === S.lang);
 
 // ---------- Mascotte "Lingo" ----------
@@ -115,7 +115,7 @@ const VIEWS = {
       <div class="chip"><b>⭐ ${P().xp}</b><span>points XP</span></div>
       <div class="chip"><b>🎯 ${P().level || '?'}</b><span>niveau</span></div>
     </div>
-    <button class="big" data-act="start">${P().diagnosticDone ? 'Continuer' : 'Commencer le diagnostic'}</button>
+    <button class="big" data-act="${P().diagnosticDone ? 'start' : 'diag'}">${P().diagnosticDone ? 'Continuer' : 'Commencer le diagnostic'}</button>
     <div class="card"><h3>🧪 Séance d'essai</h3>
       <p class="mut" style="margin:0 0 12px;font-size:15px">10 exercices variés pour tester le moteur. Les vraies leçons arrivent à l'étape 7.</p>
       <button class="big" style="margin:0" data-act="practice">Lancer une séance</button></div>`,
@@ -126,6 +126,7 @@ const VIEWS = {
       <div class="chip"><b>🔥 ${P().streak}</b><span>série actuelle</span></div>
       <div class="chip"><b>🏅 ${P().bestStreak}</b><span>meilleure série</span></div>
       <div class="chip"><b>⭐ ${P().xp}</b><span>points XP</span></div></div>
+    <div class="card"><h3>Mon niveau</h3>${S.diag ? `<p style="margin:0 0 12px"><b style="font-size:22px">${S.diag.level}${S.diag.capped ? '+' : ''} · ${(Diag.INFO[S.diag.levelNum] || ['', ''])[1]}</b></p>${Diag.bars(S.diag)}` : '<p class="mut" style="margin:0">Fais le diagnostic pour découvrir ton niveau.</p>'}</div>
     <div class="card"><h3>Badges</h3><p class="mut" style="margin:0">Tes premiers badges arriveront avec tes premières leçons. 🏆</p></div>`,
   settings: () => `<div class="card">
       <div class="row"><span>Sons</span><button class="tog" role="switch" aria-label="Sons" aria-checked="${S.sound}" data-act="sound"></button></div>
@@ -134,10 +135,12 @@ const VIEWS = {
         `<button data-act="theme" data-v="${v}" aria-pressed="${S.theme === v}">${n}</button>`).join('')}</div></div></div>
     <div class="card"><h3>Mes données</h3><p class="mut" style="margin:0 0 10px;font-size:15px">Tout reste sur ton iPhone. Fais une sauvegarde de temps en temps.</p>
       <button class="big" style="margin:0" data-act="export">Sauvegarder mes données</button></div>
+    <div class="card"><h3>Mon niveau</h3><p class="mut" style="margin:0 0 10px;font-size:15px">${P().diagnosticDone ? 'Niveau actuel : <b>' + P().level + '</b>.' : 'Pas encore de diagnostic pour cette langue.'}</p>
+      <button class="big" style="margin:0" data-act="diag">${P().diagnosticDone ? 'Refaire le diagnostic' : 'Commencer le diagnostic'}</button></div>
     <div class="card"><h3>Contenu des langues</h3>
       ${LANGS.map(l => { const t = Lang.stats(l.code); return `<div class="row"><span>${l.flag} ${l.name}</span><small>${t.vocab} mots · ${t.grammar} règles · ${t.sentences} phrases</small></div>`; }).join('')}
       <button class="big" style="margin:12px 0 0" data-act="check">Vérifier le contenu</button><div id="chk" class="mut" style="margin-top:10px;font-size:14px"></div></div>
-    <p class="mut" style="text-align:center;font-size:13px">Langues · étape 5</p>`
+    <p class="mut" style="text-align:center;font-size:13px">Langues · étape 6</p>`
 };
 
 function render() {
@@ -146,6 +149,15 @@ function render() {
   $('#tabs').innerHTML = TABS.map(([k, i, n]) => `<button data-tab="${k}" role="tab" aria-selected="${k === S.tab}"><span>${i}</span>${n}</button>`).join('');
   const v = $('#view'); v.innerHTML = VIEWS[S.tab](); v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
 }
+
+async function refresh() { S.profile = await DB.getProfile(S.lang); S.diag = await Diag.latest(S.lang); }
+async function runDiag() {
+  const r = await Diag.run({ lang: S.lang });
+  if (!r || r.status !== 'done') S.skipDiag[S.lang] = true; // pas de relance automatique pendant cette session
+  await refresh(); render();
+}
+// Première utilisation d'une langue : le diagnostic se lance automatiquement (avec un bouton « Plus tard »).
+function maybeDiag() { if (S.profile && !S.profile.diagnosticDone && !S.skipDiag[S.lang]) runDiag().catch(e => toast('Erreur : ' + e.message)); }
 
 async function exportData() {
   const f = new File([JSON.stringify(await DB.exportAll(), null, 1)], 'sauvegarde-langues.json', { type: 'application/json' });
@@ -160,19 +172,20 @@ document.addEventListener('click', async e => {
   if (!['good', 'bad', 'streak', 'haptics', 'hlevel', 'htest'].includes(b.dataset.act)) H.run('tap');
   try {
     if (b.dataset.lang && b.dataset.lang !== S.lang) {
-      S.lang = b.dataset.lang; await DB.setSetting('lang', S.lang); S.profile = await DB.getProfile(S.lang); render();
+      S.lang = b.dataset.lang; await DB.setSetting('lang', S.lang); await refresh(); render(); maybeDiag();
     } else if (b.dataset.tab) { S.tab = b.dataset.tab; render(); }
     else switch (b.dataset.act) {
       case 'good': Fx.good(10); break;
       case 'bad': Fx.bad(); break;
       case 'streak': Fx.streak(7); break;
-      case 'start': react('cheer'); toast('Le diagnostic arrive bientôt ! 🚀'); break;
+      case 'start': react('cheer'); toast('Tes 5 leçons arrivent à l\'étape 7 ! 🚀'); break;
+      case 'diag': if (P().diagnosticDone && !confirm('Refaire le diagnostic ? Ton niveau actuel sera remplacé.')) break; await runDiag(); break;
       case 'sound': S.sound = !S.sound; await DB.setSetting('sound', S.sound); render(); if (S.sound) Fx.good(); break;
       case 'haptics': S.haptics = !S.haptics; if (S.haptics) H.run('good'); await DB.setSetting('haptics2', S.haptics); render(); break;
       case 'hlevel': S.hLevel = +b.dataset.v; H.run('good'); await DB.setSetting('hLevel', S.hLevel); render(); break;
       case 'htest': H.run(b.dataset.v); break;
       case 'theme': S.theme = b.dataset.v; await DB.setSetting('theme', S.theme); applyTheme(); render(); break;
-      case 'practice': await Exo.start({ lang: S.lang }); S.profile = await DB.getProfile(S.lang); render(); break;
+      case 'practice': await Exo.start({ lang: S.lang }); await refresh(); render(); break;
       case 'export': exportData(); break;
       case 'check': { const out = LANGS.flatMap(l => Lang.validate(l.code).map(e => l.code.toUpperCase() + ' : ' + e));
         $('#chk').innerHTML = out.length ? '⚠️ ' + out.slice(0, 6).join('<br>') : '✅ Tout est cohérent : aucun doublon, aucune règle manquante.';
@@ -190,8 +203,8 @@ window.addEventListener('db-error', e => toast('Erreur de stockage : ' + (e.deta
     await DB.open();
     S.lang = await DB.getSetting('lang', 'en'); S.sound = await DB.getSetting('sound', true); S.theme = await DB.getSetting('theme', 'light'); S.haptics = await DB.getSetting('haptics2', false); S.hLevel = await DB.getSetting('hLevel', 1);
     if (!LANGS.some(l => l.code === S.lang)) S.lang = LANGS[0].code;
-    S.profile = await DB.getProfile(S.lang); DB.persist();
-    applyTheme(); render(); $('#app').hidden = false; $('#splash').classList.add('off');
+    await refresh(); DB.persist();
+    applyTheme(); render(); $('#app').hidden = false; $('#splash').classList.add('off'); setTimeout(maybeDiag, 500);
   } catch (e) {
     $('#splash p').innerHTML = "Impossible de démarrer l'app.<br><small>Ferme l'app et rouvre-la. Si ça continue, le stockage de Safari est peut-être plein.</small>";
   }

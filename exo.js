@@ -26,11 +26,16 @@
     return { r: 'ko' };
   }
 
-  // ---------- Génération d'une séance ----------
-  function gen(code, n) {
+  // ---------- Fabrique d'exercices (utilisée par les séances et par le diagnostic) ----------
+  // Options : lvl = niveau voulu, dir = 'fr' | 'tg' (sens du QCM), kind = 'word' | 'sentence' (écoute).
+  function factory(code) {
     const d = Lang.get(code), V = d.vocab, Sn = d.sentences, canSpeak = typeof speechSynthesis !== 'undefined';
     const usedV = new Set(), usedS = new Set();
-    const take = (arr, used) => { const c = arr.filter(x => !used.has(x.id)); const x = (c.length ? c : arr)[rnd((c.length ? c : arr).length)]; used.add(x.id); return x; };
+    const take = (arr, used, lvl) => {
+      const pool = lvl ? arr.filter(x => x.lvl === lvl) : arr, p0 = pool.length ? pool : arr;
+      const fresh = p0.filter(x => !used.has(x.id)), src = fresh.length ? fresh : p0;
+      const x = src[rnd(src.length)]; used.add(x.id); return x;
+    };
     const gram = id => d.grammar.find(g => g.id === id) || null;
     const others = (v, field) => {
       const seen = new Set([v[field]]);
@@ -38,37 +43,42 @@
         .filter(x => !seen.has(x[field]) && seen.add(x[field])).slice(0, 3).map(x => x[field]);
     };
     const make = {
-      qcm() {
-        const v = take(V, usedV), toFr = Math.random() < .5, f = toFr ? 'fr' : 'w', a = v[f];
-        return { type: 'qcm', itemId: v.id, answer: a, choices: shuffle([a, ...others(v, f)]), answerText: v.w + ' = ' + v.fr,
+      qcm(o = {}) {
+        const v = take(V, usedV, o.lvl), toFr = o.dir ? o.dir === 'fr' : Math.random() < .5, f = toFr ? 'fr' : 'w', a = v[f];
+        return { type: 'qcm', lvl: v.lvl, theme: v.theme, itemId: v.id, answer: a, choices: shuffle([a, ...others(v, f)]), answerText: v.w + ' = ' + v.fr,
           prompt: toFr ? `Que veut dire <span class="hl">${esc(v.w)}</span> ?` : `Comment dit-on <span class="hl">${esc(v.fr)}</span> en ${esc(d.name.toLowerCase())} ?` };
       },
-      type() {
-        const v = take(V, usedV);
-        return { type: 'type', itemId: v.id, prompt: v.fr, answers: [base(v.w)], raws: [raw(v.w)], answerText: v.w, lang: d.name.toLowerCase() };
+      type(o = {}) {
+        const v = take(V, usedV, o.lvl);
+        return { type: 'type', lvl: v.lvl, theme: v.theme, itemId: v.id, prompt: v.fr, answers: [base(v.w)], raws: [raw(v.w)], answerText: v.w, lang: d.name.toLowerCase() };
       },
-      order() {
-        const s = take(Sn, usedS);
-        return { type: 'order', itemId: s.id, grammarId: s.grammarId, grammar: gram(s.grammarId), prompt: s.fr, words: s.words,
+      order(o = {}) {
+        const s = take(Sn, usedS, o.lvl);
+        return { type: 'order', lvl: s.lvl, itemId: s.id, grammarId: s.grammarId, grammar: gram(s.grammarId), prompt: s.fr, words: s.words,
           bank: shuffle(s.words.concat(s.distractors)), answerText: s.target + ' — ' + s.fr };
       },
       match() {
         const first = take(V, usedV), same = shuffle(V.filter(x => x.id !== first.id && x.lvl === first.lvl && !usedV.has(x.id)));
         const rest = same.length >= 3 ? same : shuffle(V.filter(x => x.id !== first.id));
         const pairs = [first, ...rest.slice(0, 3)]; pairs.forEach(p => usedV.add(p.id));
-        return { type: 'match', itemId: pairs.map(p => p.id).join('+'), pairs, answerText: pairs.map(p => p.w + ' = ' + p.fr).join(' · ') };
+        return { type: 'match', lvl: first.lvl, itemId: pairs.map(p => p.id).join('+'), pairs, answerText: pairs.map(p => p.w + ' = ' + p.fr).join(' · ') };
       },
-      listen() {
-        if (Math.random() < .5 && Sn.length >= 4) {
-          const s = take(Sn, usedS), f = shuffle(Sn.filter(x => x.id !== s.id)).slice(0, 3).map(x => x.fr);
-          return { type: 'listen', itemId: s.id, grammarId: s.grammarId, grammar: gram(s.grammarId), speak: s.target, speech: d.speech, answer: s.fr,
+      listen(o = {}) {
+        const sentence = o.kind ? o.kind === 'sentence' : Math.random() < .5;
+        if (sentence && Sn.length >= 4) {
+          const s = take(Sn, usedS, o.lvl), f = shuffle(Sn.filter(x => x.id !== s.id)).slice(0, 3).map(x => x.fr);
+          return { type: 'listen', lvl: s.lvl, itemId: s.id, grammarId: s.grammarId, grammar: gram(s.grammarId), speak: s.target, speech: d.speech, answer: s.fr,
             choices: shuffle([s.fr, ...f]), answerText: s.target + ' — ' + s.fr, prompt: 'Écoute, puis choisis la bonne traduction' };
         }
-        const v = take(V, usedV);
-        return { type: 'listen', itemId: v.id, speak: v.w.replace(/^to /, ''), speech: d.speech, answer: v.fr, choices: shuffle([v.fr, ...others(v, 'fr')]),
-          answerText: v.w + ' = ' + v.fr, prompt: 'Écoute, puis choisis le bon sens' };
+        const v = take(V, usedV, o.lvl);
+        return { type: 'listen', lvl: v.lvl, theme: v.theme, itemId: v.id, speak: v.w.replace(/^to /, ''), speech: d.speech, answer: v.fr,
+          choices: shuffle([v.fr, ...others(v, 'fr')]), answerText: v.w + ' = ' + v.fr, prompt: 'Écoute, puis choisis le bon sens' };
       }
     };
+    return { d, make, canSpeak };
+  }
+  function gen(code, n) {
+    const { make, canSpeak } = factory(code);
     const kinds = shuffle(['qcm', 'qcm', 'qcm', 'order', 'order', 'type', 'type', 'match', 'listen', 'listen']).slice(0, n);
     return kinds.map(k => make[(k === 'listen' && !canSpeak) ? 'qcm' : k]());
   }
@@ -210,5 +220,5 @@
       step();
     });
   }
-  window.Exo = { start, _t: { grade, gen, base, raw } };
+  window.Exo = { start, R, factory, _t: { grade, gen, base, raw } };
 })();
