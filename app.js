@@ -153,6 +153,9 @@ const VIEWS = {
     <div class="card"><h3>Contenu des langues</h3>
       ${LANGS.map(l => { const t = Lang.stats(l.code); return `<div class="row"><span>${l.flag} ${l.name}</span><small>${t.vocab} mots · ${t.grammar} règles · ${t.sentences} phrases</small></div>`; }).join('')}
       <button class="big" style="margin:12px 0 0" data-act="check">Vérifier le contenu</button><div id="chk" class="mut" style="margin-top:10px;font-size:14px"></div></div>
+    <div class="card"><h3>Diagnostic technique</h3><p class="mut" style="margin:0 0 10px;font-size:15px">En cas d'erreur de stockage, touche ce bouton et envoie-moi une capture.</p>
+      <button class="big" style="margin:0" data-act="dbtest">Tester la mémoire</button>
+      <div id="dbt" class="mut" style="margin-top:10px;font-size:14px">${(window.__dbErr || []).slice(-3).map(d => '⚠️ ' + d.store + ' · ' + d.name + ' — ' + d.message).join('<br>')}</div></div>
     <p class="mut" style="text-align:center;font-size:13px">Langues · étape 7</p>`
 };
 
@@ -211,6 +214,7 @@ document.addEventListener('click', async e => {
       case 'htest': H.run(b.dataset.v); break;
       case 'theme': S.theme = b.dataset.v; await DB.setSetting('theme', S.theme); applyTheme(); render(); break;
       case 'practice': await Exo.start({ lang: S.lang }); await refresh(); render(); break;
+      case 'dbtest': await dbTest(); break;
       case 'export': exportData(); break;
       case 'check': { const out = LANGS.flatMap(l => Lang.validate(l.code).map(e => l.code.toUpperCase() + ' : ' + e));
         $('#chk').innerHTML = out.length ? '⚠️ ' + out.slice(0, 6).join('<br>') : '✅ Tout est cohérent : aucun doublon, aucune règle manquante.';
@@ -218,7 +222,27 @@ document.addEventListener('click', async e => {
     }
   } catch (err) { toast('Oups, une erreur est survenue : ' + err.message); }
 });
-window.addEventListener('db-error', e => toast('Erreur de stockage : ' + (e.detail && e.detail.message)));
+let lastDbToast = 0;
+window.addEventListener('db-error', e => {           // une seule alerte toutes les 20 s, avec le nom exact de l'erreur
+  if (Date.now() - lastDbToast < 20000) return; lastDbToast = Date.now();
+  const d = e.detail || {}; toast('Erreur de stockage (' + (d.store || '?') + ' · ' + (d.name || '?') + ')');
+});
+async function dbTest() {
+  const T = '_t', now = Date.now(), out = [];
+  const tests = [
+    ['Réglages', () => DB.put('settings', { key: '_t', value: 1 })],
+    ['Profils', () => DB.put('profiles', { lang: T })],
+    ['Réponses', () => DB.add('attempts', { lang: T, lessonId: T, blockId: 'en.b1', type: 'qcm', itemId: 'x', correct: true, ts: now })],
+    ['Mémoire des mots', () => DB.put('srs', { id: '_t', lang: T, box: 1, due: now })],
+    ['Blocs', () => DB.put('blocks', { id: '_t', lang: T })],
+    ['Leçons', () => DB.put('lessons', { id: '_t', lang: T, blockId: '_t' })],
+    ['Bilans', () => DB.put('reports', { id: '_t', lang: T })],
+    ['Badges', () => DB.put('badges', { id: '_t', lang: T })]
+  ];
+  for (const [n, f] of tests) { try { await f(); out.push('✅ ' + n); } catch (e) { out.push('❌ ' + n + ' : ' + e.name + ' — ' + e.message); } }
+  try { await DB.purgeLang(T); await DB.del('settings', '_t'); out.push('✅ Nettoyage'); } catch (e) { out.push('❌ Nettoyage : ' + e.name); }
+  $('#dbt').innerHTML = out.join('<br>');
+}
 
 // ---------- Démarrage ----------
 (async function init() {

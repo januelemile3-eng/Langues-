@@ -75,9 +75,9 @@
       function answer(ex, res, ms) {
         body.style.pointerEvents = 'none';
         const ok = !!res.correct, L = ex.lvl || st.cur;
-        DB.add('attempts', { lang, lessonId: 'diag', blockId: null, type: ex.type, skill: ex.skill, lvl: L, itemId: ex.itemId, grammarId: ex.grammarId || null,
-          correct: ok, skipped: !!res.skipped, answer: res.userAnswer, ms, ts: Date.now() }).catch(() => {});
-        Mem.record(lang, ex.itemId, ok).catch(() => {});
+        DB.seq(() => DB.add('attempts', { lang, lessonId: 'diag', blockId: null, type: ex.type, skill: ex.skill, lvl: L, itemId: ex.itemId, grammarId: ex.grammarId || null,
+          correct: ok, skipped: !!res.skipped, answer: res.userAnswer, ms, ts: Date.now() })).catch(() => {});
+        DB.seq(() => Mem.record(lang, ex.itemId, ok)).catch(() => {});
         const bump = (o, k) => { o[k] = o[k] || { n: 0, c: 0 }; o[k].n++; if (ok) o[k].c++; };
         bump(st.per, L); bump(st.skill, ex.skill); st.answered++;
         if (ok) { st.ok++; st.wrongRun = 0; st.streak++; if (st.streak >= 2 && st.cur < maxLvl) { st.cur++; st.streak = 0; } }

@@ -191,10 +191,10 @@
 
       function answer(ex, res, ms) {
         const ok = res.correct, gain = ok ? (ex.retry ? 5 : 10) : 0;
-        DB.add('attempts', { lang, lessonId: lessonId || 'demo', blockId: blockId || null, type: ex.type, itemId: ex.itemId, grammarId: ex.grammarId || null,
-          correct: ok, retry: !!ex.retry, answer: res.userAnswer, ms, ts: Date.now() }).catch(() => {});
-        Mem.record(lang, ex.itemId, ok).catch(() => {});
-        if (ok) { xp += gain; if (!ex.retry) first++; DB.addXP(lang, gain).catch(() => {}); }
+        DB.seq(() => DB.add('attempts', { lang, lessonId: lessonId || 'demo', blockId: blockId || null, type: ex.type, itemId: ex.itemId, grammarId: ex.grammarId || null,
+          correct: ok, retry: !!ex.retry, answer: res.userAnswer, ms, ts: Date.now() })).catch(() => {});
+        DB.seq(() => Mem.record(lang, ex.itemId, ok)).catch(() => {});
+        if (ok) { xp += gain; if (!ex.retry) first++; DB.seq(() => DB.addXP(lang, gain)).catch(() => {}); }
         else if (!ex.retry) queue.push(Object.assign({}, ex, { retry: true })); // l'exercice sera reproposé en fin de séance
         xpEl.textContent = '⭐ ' + xp; bar.style.width = ((idx + 1) / queue.length * 100) + '%';
         const btn = '<button class="big" data-go>Continuer</button>';

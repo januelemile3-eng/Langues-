@@ -37,21 +37,36 @@
     return dbp;
   }
 
+  // Journal des erreurs (affiché dans Réglages > Diagnostic technique)
+  window.__dbErr = [];
+  function report(store, mode, e) {
+    const d = { store, mode, name: (e && e.name) || 'Erreur', message: (e && e.message) || 'Opération annulée', t: Date.now() };
+    window.__dbErr.push(d); if (window.__dbErr.length > 20) window.__dbErr.shift();
+    window.dispatchEvent(new CustomEvent('db-error', { detail: d }));
+  }
   // Exécute une opération sur un tiroir et attend qu'elle soit VRAIMENT sauvegardée.
-  function run(store, mode, fn) {
+  // En cas d'échec passager (fréquent sur iPhone), on réessaie une fois avant de signaler l'erreur.
+  function run(store, mode, fn, retried) {
     return open().then(db => new Promise((res, rej) => {
-      const tx = db.transaction(store, mode);
-      let out;
-      const r = fn(tx.objectStore(store));
-      if (r) r.onsuccess = () => { out = r.result; };
-      tx.oncomplete = () => res(out);
-      tx.onerror = tx.onabort = () => {
-        const e = tx.error || new Error('Opération annulée');
-        window.dispatchEvent(new CustomEvent('db-error', { detail: e }));
-        rej(e);
+      let out, last = null, tx;
+      const fail = e => {
+        if (!retried && (!e || e.name === 'UnknownError' || e.name === 'AbortError' || e.name === 'TransactionInactiveError')) {
+          dbp = null; return setTimeout(() => run(store, mode, fn, true).then(res, rej), 200);
+        }
+        report(store, mode, e); rej(e || new Error('Opération annulée'));
       };
+      try {
+        tx = db.transaction(store, mode);
+        const r = fn(tx.objectStore(store));
+        if (r) { r.onsuccess = () => { out = r.result; }; r.onerror = () => { last = r.error; }; }
+      } catch (e) { return fail(e); }
+      tx.oncomplete = () => res(out);
+      tx.onabort = () => fail(tx.error || last);
     }));
   }
+  // File d'attente : les écritures « de fond » (réponses, mémoire, XP) passent l'une après l'autre, jamais en même temps.
+  let chain = Promise.resolve();
+  const seq = fn => { const p = chain.then(fn); chain = p.catch(() => {}); return p; };
 
   // Plusieurs tiroirs en une seule opération "tout ou rien" (ex : fin de leçon).
   function batch(names, fn) {
@@ -143,5 +158,5 @@
   }
 
   window.DB = { open, get, put, add, del, all, byIndex, batch, getSetting, setSetting,
-                getProfile, addXP, touchStreak, today, purgeLang, exportAll, importAll, persist, estimate };
+                seq, getProfile, addXP, touchStreak, today, purgeLang, exportAll, importAll, persist, estimate };
 })();
