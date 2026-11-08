@@ -32,7 +32,7 @@ h3{margin:0 0 10px;font-size:18px}
 small,.mut{color:var(--mut)}
 .path{display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 0}
 .node{width:70px;height:70px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:28px;box-shadow:0 5px 0 var(--line)}
-.node:nth-child(even){transform:translateX(34px)}.node:nth-child(odd){transform:translateX(-34px)}
+.stepn{display:flex;flex-direction:column;align-items:center;gap:6px}.stepn:nth-child(even){transform:translateX(34px)}.stepn:nth-child(odd){transform:translateX(-34px)}.stepn small{font-size:13px;font-weight:700;color:var(--mut)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
 .row:last-child{border:0}
 .seg{display:flex;background:var(--soft);border-radius:12px;padding:3px}
@@ -104,3 +104,10 @@ nav button[aria-selected=true]{background:var(--soft);color:var(--c1)}
 .bar>span{flex:0 0 42%}.bar>div{flex:1;height:12px;background:var(--line);border-radius:99px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--c1);border-radius:99px;transition:width .6s}
 .bar b{flex:0 0 42px;text-align:right}
+/* ---- Leçons ---- */
+button.node{border:0;color:var(--fg);font-weight:800}
+.node.cur{background:var(--c1);color:#fff;box-shadow:0 5px 0 var(--c2);animation:pulse 1.8s ease-in-out infinite}
+.node.done{background:var(--good);color:#fff;box-shadow:0 5px 0 #1f8f54}
+.node.lock{opacity:.6}
+.node:active{transform:translateY(3px)}
+@keyframes pulse{50%{transform:scale(1.07)}}

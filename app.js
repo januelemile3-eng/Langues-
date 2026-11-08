@@ -1,7 +1,7 @@
 // app.js : interface de base (étape 3). Langues, navigation, thème, mascotte, récompenses.
 let LANGS = []; // rempli depuis les fichiers lang-xx.js (voir lang.js)
 const TABS = [['home', '🏠', 'Accueil'], ['lessons', '📚', 'Leçons'], ['progress', '🏆', 'Progrès'], ['settings', '⚙️', 'Réglages']];
-const S = { lang: 'en', tab: 'home', sound: true, haptics: false, hLevel: 1, theme: 'light', profile: null, diag: null, skipDiag: {} };
+const S = { lang: 'en', tab: 'home', sound: true, haptics: false, hLevel: 1, theme: 'light', profile: null, diag: null, skipDiag: {}, block: null, lessons: [] };
 const $ = s => document.querySelector(s), L = () => LANGS.find(l => l.code === S.lang);
 
 // ---------- Mascotte "Lingo" ----------
@@ -115,13 +115,26 @@ const VIEWS = {
       <div class="chip"><b>⭐ ${P().xp}</b><span>points XP</span></div>
       <div class="chip"><b>🎯 ${P().level || '?'}</b><span>niveau</span></div>
     </div>
-    <button class="big" data-act="${P().diagnosticDone ? 'start' : 'diag'}">${P().diagnosticDone ? 'Continuer' : 'Commencer le diagnostic'}</button>
+    <button class="big" data-act="${P().diagnosticDone ? 'start' : 'diag'}">${P().diagnosticDone ? 'Mes 5 leçons' : 'Commencer le diagnostic'}</button>
     <div class="card"><h3>🧪 Séance d'essai</h3>
       <p class="mut" style="margin:0 0 12px;font-size:15px">10 exercices variés pour tester le moteur. Les vraies leçons arrivent à l'étape 7.</p>
       <button class="big" style="margin:0" data-act="practice">Lancer une séance</button></div>`,
-  lessons: () => `<div class="card"><h3>Ton parcours en ${L().name.toLowerCase()}</h3>
-    <p class="mut" style="margin:0">Tes 5 leçons sur mesure apparaîtront ici après le diagnostic.</p>
-    <div class="path">${[1, 2, 3, 4, 5].map(i => `<div class="node" aria-label="Leçon ${i} verrouillée">🔒</div>`).join('')}</div></div>`,
+  lessons: () => {
+    if (!P().diagnosticDone) return `<div class="card"><h3>Commence par le diagnostic</h3><p class="mut" style="margin:0 0 12px">Il me permet de fabriquer des leçons à ton niveau.</p>
+      <button class="big" style="margin:0" data-act="diag">Commencer le diagnostic</button></div>`;
+    const b = S.block, ls = S.lessons;
+    if (!b || !ls.length) return `<div class="card"><h3>Tes 5 leçons</h3><p class="mut" style="margin:0 0 12px">Prêt à créer ton bloc de 5 leçons sur mesure ?</p>
+      <button class="big" style="margin:0" data-act="makeblock">Créer mes 5 leçons</button></div>`;
+    const cur = ls.findIndex(l => l.status !== 'done'), g = Lang.get(S.lang), lvl = (Diag.INFO[b.level] || [b.level])[0];
+    const rules = b.focusRules.map(id => g.grammar.find(r => r.id === id)).filter(Boolean);
+    const avg = Math.round(ls.reduce((s, l) => s + (l.score || 0), 0) / ls.length);
+    return `<div class="card"><h3>Bloc ${b.index} · niveau ${lvl}</h3>
+      <div class="path">${ls.map((l, i) => { const st = l.status === 'done' ? 'done' : i === cur ? 'cur' : 'lock';
+        return `<div class="stepn"><button class="node ${st}" data-act="lesson" data-id="${l.id}" aria-label="Leçon ${l.order} : ${l.title}">${st === 'done' ? '✓' : st === 'cur' ? '▶' : '🔒'}</button><small>${l.title}${l.status === 'done' ? ' · ' + l.score + '%' : ''}</small></div>`; }).join('')}</div></div>
+      ${cur === -1 ? `<div class="card"><h3>🎉 Bloc terminé !</h3><p class="mut" style="margin:0 0 12px">Résultat moyen : ${avg} %.</p><button class="big" style="margin:0" data-act="makeblock">Créer les 5 leçons suivantes</button></div>` : ''}
+      <div class="card"><h3>Ce bloc travaille</h3>${rules.map(r => `<div class="row"><span>${r.title}</span></div>`).join('')}
+        <div class="row"><span>Nouveaux mots</span><b>${b.newItems.length}</b></div></div>`;
+  },
   progress: () => `<div class="stats">
       <div class="chip"><b>🔥 ${P().streak}</b><span>série actuelle</span></div>
       <div class="chip"><b>🏅 ${P().bestStreak}</b><span>meilleure série</span></div>
@@ -140,7 +153,7 @@ const VIEWS = {
     <div class="card"><h3>Contenu des langues</h3>
       ${LANGS.map(l => { const t = Lang.stats(l.code); return `<div class="row"><span>${l.flag} ${l.name}</span><small>${t.vocab} mots · ${t.grammar} règles · ${t.sentences} phrases</small></div>`; }).join('')}
       <button class="big" style="margin:12px 0 0" data-act="check">Vérifier le contenu</button><div id="chk" class="mut" style="margin-top:10px;font-size:14px"></div></div>
-    <p class="mut" style="text-align:center;font-size:13px">Langues · étape 6</p>`
+    <p class="mut" style="text-align:center;font-size:13px">Langues · étape 7</p>`
 };
 
 function render() {
@@ -150,10 +163,14 @@ function render() {
   const v = $('#view'); v.innerHTML = VIEWS[S.tab](); v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
 }
 
-async function refresh() { S.profile = await DB.getProfile(S.lang); S.diag = await Diag.latest(S.lang); }
+async function refresh() {
+  S.profile = await DB.getProfile(S.lang); S.diag = await Diag.latest(S.lang);
+  S.block = await Plan.currentBlock(S.lang); S.lessons = S.block ? await Plan.lessons(S.block.id) : [];
+}
 async function runDiag() {
   const r = await Diag.run({ lang: S.lang });
   if (!r || r.status !== 'done') S.skipDiag[S.lang] = true; // pas de relance automatique pendant cette session
+  else { try { await Plan.generateBlock(S.lang); S.tab = 'lessons'; toast('Tes 5 leçons sont prêtes ! 🎉'); } catch (e) { toast('Leçons non créées : ' + e.message); } }
   await refresh(); render();
 }
 // Première utilisation d'une langue : le diagnostic se lance automatiquement (avec un bouton « Plus tard »).
@@ -178,7 +195,15 @@ document.addEventListener('click', async e => {
       case 'good': Fx.good(10); break;
       case 'bad': Fx.bad(); break;
       case 'streak': Fx.streak(7); break;
-      case 'start': react('cheer'); toast('Tes 5 leçons arrivent à l\'étape 7 ! 🚀'); break;
+      case 'start': S.tab = 'lessons'; render(); break;
+      case 'makeblock': await Plan.generateBlock(S.lang); await refresh(); render(); toast('Tes 5 leçons sont prêtes ! 🎉'); break;
+      case 'lesson': {
+        const l = S.lessons.find(x => x.id === b.dataset.id), cur = S.lessons.findIndex(x => x.status !== 'done'); if (!l) break;
+        if (l.status === 'done') { toast('Leçon terminée ✓ Score : ' + l.score + ' %'); break; }
+        if (l.order - 1 > cur) { toast('🔒 Termine d\'abord la leçon précédente'); break; }
+        await Exo.start({ lang: S.lang, exercises: l.exercises, lessonId: l.id, blockId: S.block.id, onFinish: sum => Plan.complete(l.id, sum) });
+        await refresh(); render(); break;
+      }
       case 'diag': if (P().diagnosticDone && !confirm('Refaire le diagnostic ? Ton niveau actuel sera remplacé.')) break; await runDiag(); break;
       case 'sound': S.sound = !S.sound; await DB.setSetting('sound', S.sound); render(); if (S.sound) Fx.good(); break;
       case 'haptics': S.haptics = !S.haptics; if (S.haptics) H.run('good'); await DB.setSetting('haptics2', S.haptics); render(); break;

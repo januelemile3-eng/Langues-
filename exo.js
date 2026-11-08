@@ -44,33 +44,37 @@
     };
     const make = {
       qcm(o = {}) {
-        const v = take(V, usedV, o.lvl), toFr = o.dir ? o.dir === 'fr' : Math.random() < .5, f = toFr ? 'fr' : 'w', a = v[f];
+        const v = o.v || take(V, usedV, o.lvl), toFr = o.dir ? o.dir === 'fr' : Math.random() < .5, f = toFr ? 'fr' : 'w', a = v[f];
         return { type: 'qcm', lvl: v.lvl, theme: v.theme, itemId: v.id, answer: a, choices: shuffle([a, ...others(v, f)]), answerText: v.w + ' = ' + v.fr,
           prompt: toFr ? `Que veut dire <span class="hl">${esc(v.w)}</span> ?` : `Comment dit-on <span class="hl">${esc(v.fr)}</span> en ${esc(d.name.toLowerCase())} ?` };
       },
       type(o = {}) {
-        const v = take(V, usedV, o.lvl);
+        const v = o.v || take(V, usedV, o.lvl);
         return { type: 'type', lvl: v.lvl, theme: v.theme, itemId: v.id, prompt: v.fr, answers: [base(v.w)], raws: [raw(v.w)], answerText: v.w, lang: d.name.toLowerCase() };
       },
       order(o = {}) {
-        const s = take(Sn, usedS, o.lvl);
+        const s = o.s || take(Sn, usedS, o.lvl);
         return { type: 'order', lvl: s.lvl, itemId: s.id, grammarId: s.grammarId, grammar: gram(s.grammarId), prompt: s.fr, words: s.words,
           bank: shuffle(s.words.concat(s.distractors)), answerText: s.target + ' — ' + s.fr };
       },
-      match() {
-        const first = take(V, usedV), same = shuffle(V.filter(x => x.id !== first.id && x.lvl === first.lvl && !usedV.has(x.id)));
-        const rest = same.length >= 3 ? same : shuffle(V.filter(x => x.id !== first.id));
-        const pairs = [first, ...rest.slice(0, 3)]; pairs.forEach(p => usedV.add(p.id));
+      match(o = {}) {
+        let pairs = o.pairs;
+        if (!pairs) {
+          const f0 = take(V, usedV), same = shuffle(V.filter(x => x.id !== f0.id && x.lvl === f0.lvl && !usedV.has(x.id)));
+          const rest = same.length >= 3 ? same : shuffle(V.filter(x => x.id !== f0.id));
+          pairs = [f0, ...rest.slice(0, 3)]; pairs.forEach(p => usedV.add(p.id));
+        }
+        const first = pairs[0];
         return { type: 'match', lvl: first.lvl, itemId: pairs.map(p => p.id).join('+'), pairs, answerText: pairs.map(p => p.w + ' = ' + p.fr).join(' · ') };
       },
       listen(o = {}) {
-        const sentence = o.kind ? o.kind === 'sentence' : Math.random() < .5;
+        const sentence = o.s ? true : o.v ? false : o.kind ? o.kind === 'sentence' : Math.random() < .5;
         if (sentence && Sn.length >= 4) {
-          const s = take(Sn, usedS, o.lvl), f = shuffle(Sn.filter(x => x.id !== s.id)).slice(0, 3).map(x => x.fr);
+          const s = o.s || take(Sn, usedS, o.lvl), f = shuffle(Sn.filter(x => x.id !== s.id)).slice(0, 3).map(x => x.fr);
           return { type: 'listen', lvl: s.lvl, itemId: s.id, grammarId: s.grammarId, grammar: gram(s.grammarId), speak: s.target, speech: d.speech, answer: s.fr,
             choices: shuffle([s.fr, ...f]), answerText: s.target + ' — ' + s.fr, prompt: 'Écoute, puis choisis la bonne traduction' };
         }
-        const v = take(V, usedV, o.lvl);
+        const v = o.v || take(V, usedV, o.lvl);
         return { type: 'listen', lvl: v.lvl, theme: v.theme, itemId: v.id, speak: v.w.replace(/^to /, ''), speech: d.speech, answer: v.fr,
           choices: shuffle([v.fr, ...others(v, 'fr')]), answerText: v.w + ' = ' + v.fr, prompt: 'Écoute, puis choisis le bon sens' };
       }
@@ -166,9 +170,9 @@
 
   // ---------- Déroulement d'une séance ----------
   const PRAISE = ['Bravo !', 'Excellent !', 'Parfait !', 'Bien joué !', 'Super !'];
-  function start({ lang }) {
+  function start({ lang, exercises, lessonId, blockId, onFinish }) {
     const root = $('#session'), body = $('#exo'), fb = $('#fb'), bar = root.querySelector('.s-bar i'), xpEl = root.querySelector('.s-xp');
-    const queue = gen(lang, 10); let idx = 0, xp = 0, first = 0, timer = null; const total = queue.length;
+    const queue = exercises ? exercises.map(e => Object.assign({}, e)) : gen(lang, 10); let idx = 0, xp = 0, first = 0, timer = null; const total = queue.length;
     root.hidden = false; xpEl.textContent = '⭐ 0'; document.body.style.overflow = 'hidden';
     return new Promise(resolve => {
       const close = () => { clearTimeout(timer); try { speechSynthesis.cancel(); } catch (e) {} root.hidden = true; fb.hidden = true; document.body.style.overflow = ''; resolve(); };
@@ -187,8 +191,9 @@
 
       function answer(ex, res, ms) {
         const ok = res.correct, gain = ok ? (ex.retry ? 5 : 10) : 0;
-        DB.add('attempts', { lang, lessonId: 'demo', blockId: null, type: ex.type, itemId: ex.itemId, grammarId: ex.grammarId || null,
+        DB.add('attempts', { lang, lessonId: lessonId || 'demo', blockId: blockId || null, type: ex.type, itemId: ex.itemId, grammarId: ex.grammarId || null,
           correct: ok, retry: !!ex.retry, answer: res.userAnswer, ms, ts: Date.now() }).catch(() => {});
+        Mem.record(lang, ex.itemId, ok).catch(() => {});
         if (ok) { xp += gain; if (!ex.retry) first++; DB.addXP(lang, gain).catch(() => {}); }
         else if (!ex.retry) queue.push(Object.assign({}, ex, { retry: true })); // l'exercice sera reproposé en fin de séance
         xpEl.textContent = '⭐ ' + xp; bar.style.width = ((idx + 1) / queue.length * 100) + '%';
@@ -210,9 +215,11 @@
         bar.style.width = '100%';
         let streakUp = false, streak = 0;
         try { const b = await DB.getProfile(lang), a = await DB.touchStreak(lang); streakUp = a.streak > b.streak; streak = a.streak; } catch (e) {}
+        let fin = null; if (onFinish) { try { fin = await onFinish({ first, total, xp }); } catch (e) {} }
         body.innerHTML = `<div class="sum"><div style="font-size:64px">${first >= 8 ? '🏆' : first >= 5 ? '🎉' : '💪'}</div><h2>Séance terminée !</h2>
           <div class="stats"><div class="chip"><b>${first}/${total}</b><span>du premier coup</span></div><div class="chip"><b>⭐ ${xp}</b><span>XP gagnés</span></div>
           <div class="chip"><b>🔥 ${streak}</b><span>jours de suite</span></div></div>
+          ${fin && fin.blockDone ? `<div class="card" style="text-align:left"><b>🎉 Bloc terminé !</b><br>Précision du bloc : ${Math.round(fin.acc * 100)} %. Va dans « Leçons » pour créer les 5 suivantes.</div>` : ''}
           <p class="mut">Les exercices ratés ont été reproposés. Tout est enregistré sur ton iPhone.</p><button class="big" data-end>Terminer</button></div>`;
         body.onclick = e => { if (e.target.closest('[data-end]')) close(); };
         if (streakUp && streak > 1) Fx.streak(streak); else Fx.good();
